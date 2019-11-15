@@ -26,12 +26,12 @@ func GetJobResponseData(response *http.Response) (*CreateSnapshotResponse, error
 	return &jobData, nil
 }
 
-func CreateSnapshot(config *NetappConfig, volume *NetappEntity, svm *NetappEntity, snapshotName string) (*CreateSnapshotResponse, error) {
+func CreateSnapshot(config *NetappConfig, volume *NetappEntity, snapshotName string) (*CreateSnapshotResponse, error) {
 	httpClient := &http.Client{}
 
 	log.Printf("Starting create snapshot operation on %s (%s)", volume.Name, volume.UUID)
 
-	requestContent := map[string]interface{} {"name": snapshotName}
+	requestContent := map[string]interface{}{"name": snapshotName}
 	requestString, marshalErr := json.Marshal(requestContent)
 	if marshalErr != nil {
 		log.Printf("Could not format request for server: %s", marshalErr)
@@ -41,15 +41,15 @@ func CreateSnapshot(config *NetappConfig, volume *NetappEntity, svm *NetappEntit
 	log.Printf("DEBUG: request is %s", string(requestString))
 	url := url2.URL{
 		Scheme: "https",
-		Host: config.Host,
-		Path: fmt.Sprintf("/api/storage/volumes/%s/snapshots", volume.UUID),
+		Host:   config.Host,
+		Path:   fmt.Sprintf("/api/storage/volumes/%s/snapshots", volume.UUID),
 	}
 
 	urlString := url.String()
 	log.Printf("DEBUG: making request to %s", urlString)
-	req, _ := http.NewRequest("POST",urlString,bytes.NewReader(requestString))
-	req.Header.Add("Content-Type","application/json")
-	req.SetBasicAuth(config.User,config.Passwd)
+	req, _ := http.NewRequest("POST", urlString, bytes.NewReader(requestString))
+	req.Header.Add("Content-Type", "application/json")
+	req.SetBasicAuth(config.User, config.Passwd)
 
 	response, httpErr := httpClient.Do(req)
 
@@ -69,7 +69,7 @@ func CreateSnapshot(config *NetappConfig, volume *NetappEntity, svm *NetappEntit
 	}
 
 	snapshotResponse, problem := GetJobResponseData(response)
-	if problem!=nil {
+	if problem != nil {
 		log.Printf("Server returned success but we could not understand the response: %s", problem)
 		return nil, problem
 	}

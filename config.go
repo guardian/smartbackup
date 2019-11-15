@@ -14,26 +14,39 @@ type ConfigData struct {
 /**
 resolves the names in the provided configuration and returns a list of ResolvedBackupTarget pointers
 which contain pointers to descriptor objects for netapp, database, etc.
+returns a list of pointers to ResolvedBackupTarget for targets that resolved and a list of pointers
+to BackupTarget for targets that did not resolve
 */
-func (c *ConfigData) ResolveBackupTargets() []*ResolvedBackupTarget {
-	netAppMap := make(map[string]*netapp.NetappConfig, len(c.Netapp))
+func (c *ConfigData) ResolveBackupTargets() ([]*ResolvedBackupTarget, []*BackupTarget) {
+	netAppMap := make(map[string]netapp.NetappConfig, len(c.Netapp))
 	for _, entry := range c.Netapp {
-		netAppMap[entry.Name] = &entry
+		netAppMap[entry.Name] = entry
 	}
 
-	dataBaseMap := make(map[string]*postgres.DatabaseConfig, len(c.Databases))
+	dataBaseMap := make(map[string]postgres.DatabaseConfig, len(c.Databases))
 	for _, entry := range c.Databases {
-		dataBaseMap[entry.Name] = &entry
+		dataBaseMap[entry.Name] = entry
 	}
 
-	resolvedTargets := make([]*ResolvedBackupTarget, len(c.Targets))
+	resolvedTargets := make([]*ResolvedBackupTarget, 0)
+	failedTargets := make([]*BackupTarget, 0)
+
 	for i, entry := range c.Targets {
-		resolvedTargets[i] = &ResolvedBackupTarget{
-			Database: dataBaseMap[entry.DatabaseName],
-			Netapp:   netAppMap[entry.NetappName],
-			VolumeId: entry.VolumeId,
+		db, dbOk := dataBaseMap[entry.DatabaseName]
+		np, netappOk := netAppMap[entry.NetappName]
+
+		if dbOk == false || netappOk == false {
+			//log.Printf("%s failed, incorrect db or netapp name", entry)
+			failedTargets = append(failedTargets, &c.Targets[i])
+		} else {
+			//log.Printf("%s found", entry)
+			resolvedTargets = append(resolvedTargets, &ResolvedBackupTarget{
+				Database: &db,
+				Netapp:   &np,
+				VolumeId: entry.VolumeId,
+			})
 		}
 	}
 
-	return resolvedTargets
+	return resolvedTargets, failedTargets
 }

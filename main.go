@@ -34,8 +34,8 @@ func GetConfig(filePath string) (*ConfigData, error) {
 	return &config, nil
 }
 
-func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.NetappEntity, targetSVM *netapp.NetappEntity, snapshotName string) error {
-	response, err := netapp.CreateSnapshot(config, targetVolume, targetSVM, snapshotName)
+func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.NetappEntity, snapshotName string) error {
+	response, err := netapp.CreateSnapshot(config, targetVolume, snapshotName)
 	if err != nil {
 		log.Fatalf("Could not create snapshot: %s", err)
 	}
@@ -46,7 +46,7 @@ func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.Netap
 	for {
 		jobData, readErr := netapp.GetJob(config, response.Job.UUID)
 		if readErr != nil {
-			errMsg := fmt.Sprintf("Could not get job data: ", readErr)
+			errMsg := fmt.Sprintf("Could not get job data: %s", readErr)
 			return errors.New(errMsg)
 		}
 		if jobData.State == "success" {
@@ -66,6 +66,7 @@ func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.Netap
 func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	configFilePtr := flag.String("config", "smartbackup.yaml", "YAML config file")
+	allowInvalid := flag.Bool("continue", true, "Don't terminate if any config is invalid but continue to work with the ones that are")
 	flag.Parse()
 
 	config, configErr := GetConfig(*configFilePtr)
@@ -73,7 +74,21 @@ func main() {
 		log.Fatalf("Could not load config: %s", configErr)
 	}
 
-	resolvedTargets := config.ResolveBackupTargets()
+	resolvedTargets, unresolvedTargets := config.ResolveBackupTargets()
+
+	if len(unresolvedTargets) > 0 {
+		log.Printf("WARNING: The following database definitions are not valid, please check that they refer to correct database and netapp entries")
+		for _, entry := range unresolvedTargets {
+			log.Printf("\t%s", entry)
+		}
+		if *allowInvalid == false {
+			log.Fatalf("Exiting as --continue is set to false")
+		}
+	}
+
+	if len(resolvedTargets) == 0 {
+		log.Fatalf("ERROR: There are no valid configurations to back up!")
+	}
 
 	for _, target := range resolvedTargets {
 		dateString := time.Now().Format(time.RFC3339)
@@ -85,7 +100,13 @@ func main() {
 			break
 		}
 		log.Printf("Database quiesced, consistent state ID is %s", checkpoint)
-		time.Sleep(10 * time.Second)
+
+		targetVolumeEntity := &netapp.NetappEntity{UUID: target.VolumeId}
+		snapshotErr := SyncPerformSnapshot(target.Netapp, targetVolumeEntity, backupName)
+
+		if snapshotErr != nil {
+			log.Printf("ERROR: Could not perform snapshot! %s", snapshotErr)
+		}
 
 		endpoint, err := postgres.StopBackup(target.Database)
 		if err != nil {
