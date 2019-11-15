@@ -37,7 +37,8 @@ func GetConfig(filePath string) (*ConfigData, error) {
 func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.NetappEntity, snapshotName string) error {
 	response, err := netapp.CreateSnapshot(config, targetVolume, snapshotName)
 	if err != nil {
-		log.Fatalf("Could not create snapshot: %s", err)
+		log.Printf("Could not create snapshot: %s", err)
+		return err
 	}
 
 	log.Printf("Created job with id %s", response.Job.UUID)
