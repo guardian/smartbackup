@@ -1,0 +1,23 @@
+#The Netapp section contains details of each netapp SVM that hosts a volume that you need to back up
+netapp:
+  - host: netapp.company.int  #the hostname of the netapp that is accessed. This must be OnTap 9.6+ and host the REST API over https.
+    user: snapshotuser        #the username of a user that is allowed to create and list snapshots.
+    password: userpassword    #password for the above user
+    svm: svm_nfs              #svm that hosts the volumes
+    name: simulator-nfs       #user-provided name label that is used to reference this in "targets" below
+
+#The Databases section contains details of each Postgres database that uses the volumes to be backed up.
+#These need to be put into a consistent state (aka 'quiesced') before the snapshot can take place
+databases:
+  - name: databse1            #user-provided label that is used to reference this in "targets" below
+    host: localhost           #hostname where the database can be accessed
+    port: 5432                #port where the database can be accessed on `hostname`
+    default_db: postgres      #default db to log in to, this is needed even though we don;t actually do ops on it
+    user: replication-user    #username to log in as. This must be a superuser or "replication" user in order to carry out pg_start_backup/pg_stop_backup
+    password: password        #password for the user
+    ssl_mode: require         #can be 'require', 'verify-ca', 'verify-all'
+
+targets:
+  - database: databse1                              #The database to back up.  This field must correspond to the Name: field of one entry in Databases
+    netapp: simulator-nfs                           #The Netapp SVM containing the volume that needs backing up. This field must correspond to the Name: field of one entry in Databases
+    volumeid: 26894980-70ca-47d3-a67f-fdc6a994e7c5  #UUID of the volume that needs to be snapshotted
