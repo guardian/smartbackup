@@ -1,9 +1,11 @@
 package netapp
 
 type NetappConfig struct {
-	Host string `yaml:"host"`
-	User string `yaml:"user"`
+	Host   string `yaml:"host"`
+	User   string `yaml:"user"`
 	Passwd string `yaml:"password"`
+	SVM    string `yaml:"svm"`
+	Name   string `yaml:"name"`
 }
 
 type NetappEntity struct {
@@ -16,8 +18,8 @@ type NetappEntityUuid struct {
 }
 
 type CreateSnapshotRequest struct {
-	Name string `json:"name"`
-	SVM NetappEntity `json:"svm"`
+	Name string       `json:"name"`
+	SVM  NetappEntity `json:"svm"`
 }
 
 type JobResponse struct {
@@ -30,14 +32,14 @@ type CreateSnapshotResponse struct {
 
 type ErrorArguments struct {
 	Message string `json:"message"`
-	Code string `json:"code"`
+	Code    string `json:"code"`
 }
 
 type Error struct {
-	Target string `json:"target"`	//should be a UUID
+	Target    string           `json:"target"` //should be a UUID
 	Arguments []ErrorArguments `json:"arguments"`
-	Message string `json:"message"`
-	Code string `json:"code"`
+	Message   string           `json:"message"`
+	Code      string           `json:"code"`
 }
 
 type ErrorResponse struct {
@@ -45,11 +47,11 @@ type ErrorResponse struct {
 }
 
 type NetappJob struct {
-	StartTime string `json:"start_time"`
-	UUID string `json:"uuid"`
+	StartTime   string `json:"start_time"`
+	UUID        string `json:"uuid"`
 	Description string `json:"description"`
-	State string `json:"state"`
-	Message string `json:"message"`
-	EndTime string `json:"end_time"`
-	Code int64 `json:"code"`
+	State       string `json:"state"`
+	Message     string `json:"message"`
+	EndTime     string `json:"end_time"`
+	Code        int64  `json:"code"`
 }

@@ -2,25 +2,22 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
+	"fmt"
 	"github.com/fredex42/smartbackup/netapp"
+	"github.com/fredex42/smartbackup/postgres"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"gopkg.in/yaml.v2"
 	"time"
 )
 
-
-
-type ConfigData struct {
-	Netapp netapp.NetappConfig `yaml:"netapp"`
-}
-
-func GetConfig(filePath string) (*ConfigData, error){
+func GetConfig(filePath string) (*ConfigData, error) {
 	file, openErr := os.Open(filePath)
-	if openErr!=nil {
+	if openErr != nil {
 		return nil, openErr
 	}
 
@@ -37,13 +34,38 @@ func GetConfig(filePath string) (*ConfigData, error){
 	return &config, nil
 }
 
+func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.NetappEntity, targetSVM *netapp.NetappEntity, snapshotName string) error {
+	response, err := netapp.CreateSnapshot(config, targetVolume, targetSVM, snapshotName)
+	if err != nil {
+		log.Fatalf("Could not create snapshot: %s", err)
+	}
+
+	log.Printf("Created job with id %s", response.Job.UUID)
+
+	time.Sleep(1 * time.Second)
+	for {
+		jobData, readErr := netapp.GetJob(config, response.Job.UUID)
+		if readErr != nil {
+			errMsg := fmt.Sprintf("Could not get job data: ", readErr)
+			return errors.New(errMsg)
+		}
+		if jobData.State == "success" {
+			log.Printf("Job succeeded at %s", jobData.EndTime)
+			break
+		}
+		if jobData.State == "failure" {
+			log.Printf("Job failed at %s: %d %s", jobData.EndTime, jobData.Code, jobData.Message)
+			break
+		}
+		log.Printf("Waiting for snapshot job to complete, current status is %s", jobData.State)
+		time.Sleep(5 * time.Second)
+	}
+	return nil
+}
+
 func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	volumeUuidPtr := flag.String("volumeid","","UUID of the volume to snapshot")
-	svmName := flag.String("svm","","Storage Virtual Machine that contains the volume")
-	configFilePtr := flag.String("config","smartbackup.yaml","YAML config file")
-	snapshotName := flag.String("name","test","Name of the snapshot to create")
-
+	configFilePtr := flag.String("config", "smartbackup.yaml", "YAML config file")
 	flag.Parse()
 
 	config, configErr := GetConfig(*configFilePtr)
@@ -51,33 +73,26 @@ func main() {
 		log.Fatalf("Could not load config: %s", configErr)
 	}
 
-	targetSVM := &netapp.NetappEntity{
-		Name: *svmName,
-	}
-	targetVolume := &netapp.NetappEntity{
-		UUID: *volumeUuidPtr,
-	}
+	resolvedTargets := config.ResolveBackupTargets()
 
-	response, err := netapp.CreateSnapshot(&config.Netapp,targetVolume, targetSVM, *snapshotName)
-	if err != nil {
-		log.Fatalf("Could not create snapshot: %s", err)
-	}
-
-	log.Printf("Created job with id %s", response.Job.UUID)
-
-	for {
-		jobData, readErr := netapp.GetJob(&config.Netapp, response.Job.UUID)
-		if readErr != nil {
-			log.Fatalf("Could not get job data: ", readErr)
-		}
-		if(jobData.State=="success"){
-			log.Printf("Job succeeded at %s", jobData.EndTime)
+	for _, target := range resolvedTargets {
+		dateString := time.Now().Format(time.RFC3339)
+		backupName := fmt.Sprintf("%s_%s", target.Database.Name, dateString)
+		log.Printf("Database backup name is %s", backupName)
+		checkpoint, err := postgres.StartBackup(target.Database, backupName)
+		if err != nil {
+			log.Printf("ERROR: Database %s did not quiesce! %s", target.Database.Name, err)
 			break
 		}
-		if jobData.State=="failure" {
-			log.Printf("Job failed at %s: %d %s", jobData.EndTime, jobData.Code, jobData.Message)
+		log.Printf("Database quiesced, consistent state ID is %s", checkpoint)
+		time.Sleep(10 * time.Second)
+
+		endpoint, err := postgres.StopBackup(target.Database)
+		if err != nil {
+			log.Printf("ERROR: Database %s did not unquiesce! %s", target.Database.Name, err)
 			break
 		}
-		time.Sleep(5*time.Second)
+		log.Printf("Databse unquiesced, completed state ID is %s", endpoint)
 	}
+
 }
