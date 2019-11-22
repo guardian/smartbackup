@@ -29,7 +29,7 @@ func concatenateSenders(senders *[]string) string {
 	return senderString
 }
 
-func SendMail(mailConfig *MailConfig, subject string, body *io.Reader) error {
+func SendMail(mailConfig *MailConfig, subject string, body io.Reader) error {
 	smtpClient, err := smtp.Dial(mailConfig.SMTPServer)
 	if err != nil {
 		log.Printf("Could not connect to SMTP server '%s': %s", mailConfig.SMTPServer, err)
@@ -90,7 +90,7 @@ func SendMail(mailConfig *MailConfig, subject string, body *io.Reader) error {
 		return headerErr
 	}
 
-	_, contentErr := io.Copy(writer, *body)
+	_, contentErr := io.Copy(writer, body)
 	if contentErr != nil {
 		log.Printf("Could not write body: %s", contentErr)
 		return contentErr

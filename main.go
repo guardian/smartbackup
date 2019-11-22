@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/fredex42/smartbackup/mail"
 	"github.com/fredex42/smartbackup/netapp"
 	"github.com/fredex42/smartbackup/postgres"
 	"gopkg.in/yaml.v2"
@@ -91,6 +92,11 @@ func main() {
 		log.Fatalf("ERROR: There are no valid configurations to back up!")
 	}
 
+	messenger, msgErr := NewMessenger()
+	if msgErr != nil {
+		log.Fatalf("Could not initialise messaging: %s", msgErr)
+	}
+
 	for _, target := range resolvedTargets {
 		dateString := time.Now().Format(time.RFC3339)
 		backupName := fmt.Sprintf("%s_%s", target.Database.Name, dateString)
@@ -98,6 +104,15 @@ func main() {
 		checkpoint, err := postgres.StartBackup(target.Database, backupName)
 		if err != nil {
 			log.Printf("ERROR: Database %s did not quiesce! %s", target.Database.Name, err)
+			subject, body, msgErr := messenger.GenerateMessage(target, FailureSubjectTemplate, FailureMessage, err.Error())
+			if msgErr != nil {
+				log.Printf("ERROR: Could not generate error message: %s", msgErr)
+				//Hmm, should this be fatal??
+			}
+			sendErr := mail.SendMail(&config.SMTP, subject, body)
+			if sendErr != nil {
+				log.Printf("ERROR: Could not send error email: %s", sendErr)
+			}
 			break
 		}
 		log.Printf("Database quiesced, consistent state ID is %s", checkpoint)
