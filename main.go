@@ -66,6 +66,10 @@ func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.Netap
 	return nil
 }
 
+/**
+generate a message for the given ResolvedBackupTarget based on templates for subject and bodytext, and send it
+Returns an error if the operation fails or nil if it succeeds
+ */
 func GenerateAndSend(messenger *Messenger, config *ConfigData, target *ResolvedBackupTarget, subjectTemplate string, bodytextTemplate string, error string) error {
 	subject, body, msgErr := messenger.GenerateMessage(target, subjectTemplate, bodytextTemplate, error)
 	if msgErr != nil {

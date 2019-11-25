@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+/**
+converts the provided string-string map of headers into a single block of text for the email
+body, and returns an io.Reader for it to be streamed into the email content
+Parameters: pointer to a string-string map of headers
+Returns: an io.Reader that renders out the text of the headers
+ */
 func HeaderBodies(headers *map[string]string) io.Reader {
 	var headersString string
 
@@ -20,6 +26,11 @@ func HeaderBodies(headers *map[string]string) io.Reader {
 	return strings.NewReader(headersString)
 }
 
+/**
+helper function to take the array of sender addresses and convert it to a single comma-delimited field
+Parameters: pointer to an array of strings
+Returns: a string containing the content of all of the array separated by commas
+ */
 func concatenateSenders(senders *[]string) string {
 	var senderString string
 
@@ -29,6 +40,11 @@ func concatenateSenders(senders *[]string) string {
 	return senderString
 }
 
+/**
+main function to send an email with the given subject and content.
+Use the messenger object to handle templating values into subject and body.
+returns an error if there is a problem or nil if it works
+ */
 func SendMail(mailConfig *MailConfig, subject string, body io.Reader) error {
 	smtpClient, err := smtp.Dial(mailConfig.SMTPServer)
 	if err != nil {

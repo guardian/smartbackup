@@ -11,6 +11,13 @@ import (
 	url2 "net/url"
 )
 
+/**
+Extracts a Job Data payload from the given http response
+Parameters: pointer to an http.Response object that contains the response
+Returns:
+- a pointer to a CreateSnapshotResponse object that contains the returned job data if it parses properly
+- an error if we can't obtain or parse the information properly
+ */
 func GetJobResponseData(response *http.Response) (*CreateSnapshotResponse, error) {
 	var jobData CreateSnapshotResponse
 	responseBytes, readErr := ioutil.ReadAll(response.Body)
@@ -26,6 +33,16 @@ func GetJobResponseData(response *http.Response) (*CreateSnapshotResponse, error
 	return &jobData, nil
 }
 
+/**
+tells the NetApp REST api to create a snapshot for the given volume on the given appliance with a given name
+Parameters:
+- pointer to a NetappConfig object that describes the appliance to target
+- pointer to a NetappEntity object that describes the volume to target
+- string that contains the name for the given snapshot
+Returns:
+- a pointer to a CreateSnapshotResponse object if the operation succeeds, nil if it fails
+- an error object if the operation fails, nil if it succeeds
+ */
 func CreateSnapshot(config *NetappConfig, volume *NetappEntity, snapshotName string) (*CreateSnapshotResponse, error) {
 	httpClient := &http.Client{}
 
