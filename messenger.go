@@ -15,8 +15,8 @@ const SuccessMessage = `The backup for database {database:name} on {database:hos
 const SuccessSubjectTemplate = `{database:name} backed up`
 
 //Note: ordering is important!
-var DatabaseSubstitutionTags = []string{"database:name", "database:host", "database:port", "database:dbname"}
-var GeneralSubstitutionTags = []string{"time", "errorString"}
+var DatabaseSubstitutionTags = []string{"{database:name}", "{database:host}", "{database:port}", "{database:dbname}"}
+var GeneralSubstitutionTags = []string{"{time}", "{errorString}"}
 
 type Messenger struct {
 	CompiledDatabaseSubstitutions []*regexp.Regexp
