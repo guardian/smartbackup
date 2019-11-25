@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/fredex42/smartbackup/mail"
 	"github.com/fredex42/smartbackup/netapp"
 	"github.com/fredex42/smartbackup/postgres"
 )
@@ -9,6 +10,7 @@ type ConfigData struct {
 	Netapp    []netapp.NetappConfig     `yaml:"netapp"`
 	Databases []postgres.DatabaseConfig `yaml:"databases"`
 	Targets   []BackupTarget            `yaml:"targets"`
+	SMTP      mail.MailConfig           `yaml:"smtp"`
 }
 
 /**
