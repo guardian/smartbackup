@@ -2,10 +2,8 @@ package main
 
 import (
 	"errors"
-	"io"
 	"log"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -54,12 +52,12 @@ func compileRegexList(stringList *[]string) ([]*regexp.Regexp, error) {
 	return regexlist, nil
 }
 
-func (m *Messenger) GenerateMessage(target *ResolvedBackupTarget, subjectTemplateString string, templateString string, errorString string) (string, io.Reader, error) {
+func (m *Messenger) GenerateMessage(target *ResolvedBackupTarget, subjectTemplateString string, templateString string, errorString string) (string, string, error) {
 	//these must be in the same order as DatabseSubstitutionTags above!
 	databaseSubValues := []string{target.Database.Name, target.Database.Host, string(target.Database.Port), target.Database.DBName}
 	if len(databaseSubValues) < len(m.CompiledDatabaseSubstitutions) {
 		log.Printf("ERROR: Not enough substitution values. This probably indicates a code bug.")
-		return "", nil, errors.New("not enough substitution values")
+		return "", "", errors.New("not enough substitution values")
 	}
 
 	var finalString = templateString
@@ -75,7 +73,5 @@ func (m *Messenger) GenerateMessage(target *ResolvedBackupTarget, subjectTemplat
 		finalSubjectString = re.ReplaceAllString(finalSubjectString, generalSubValues[ctr])
 	}
 
-	rdr := strings.NewReader(finalString)
-
-	return finalSubjectString, rdr, nil
+	return finalSubjectString, finalString, nil
 }

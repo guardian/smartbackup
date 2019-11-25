@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/fredex42/smartbackup/mail"
 	"github.com/fredex42/smartbackup/netapp"
+	"github.com/fredex42/smartbackup/pagerduty"
 	"github.com/fredex42/smartbackup/postgres"
 )
 
@@ -11,6 +12,7 @@ type ConfigData struct {
 	Databases []postgres.DatabaseConfig `yaml:"databases"`
 	Targets   []BackupTarget            `yaml:"targets"`
 	SMTP      mail.MailConfig           `yaml:"smtp"`
+	PagerDuty pagerduty.PagerDutyConfig `yaml:"pagerduty"`
 }
 
 /**
