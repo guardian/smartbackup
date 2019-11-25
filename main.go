@@ -73,6 +73,8 @@ generate a message for the given ResolvedBackupTarget based on templates for sub
 Returns an error if the operation fails or nil if it succeeds
 */
 func GenerateAndSend(messenger *Messenger, config *ConfigData, target *ResolvedBackupTarget, subjectTemplate string, bodytextTemplate string, error string) error {
+	didFail := false
+
 	subject, bodyString, msgErr := messenger.GenerateMessage(target, subjectTemplate, bodytextTemplate, error)
 	if msgErr != nil {
 		log.Printf("ERROR: Could not generate error message: %s", msgErr)
@@ -85,6 +87,7 @@ func GenerateAndSend(messenger *Messenger, config *ConfigData, target *ResolvedB
 		if sendErr != nil {
 			log.Printf("ERROR: Could not send error email: %s", sendErr)
 			//continue here so PD can still be sent
+			didFail = true
 		}
 	} else {
 		log.Printf("SMTP is not configured so not sending email")
@@ -103,10 +106,18 @@ func GenerateAndSend(messenger *Messenger, config *ConfigData, target *ResolvedB
 			sendErr := pagerduty.SendAlert(pdIncident)
 			if sendErr != nil {
 				log.Printf("ERROR: Could not send pagerduty alert: %s", sendErr)
+				didFail = true
 			}
 		} else {
 			log.Printf("Pagerduty is not configured so not sending alert")
 		}
+	}
+
+	if config.SMTP.SMTPServer == "" && config.PagerDuty.ServiceKey == "" {
+		return errors.New("No message output is set up, so no message has been sent")
+	}
+	if didFail {
+		return errors.New("Could not send one or more messages, consult logs for details")
 	}
 	return nil
 }

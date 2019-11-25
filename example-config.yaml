@@ -31,4 +31,4 @@ smtp:
     - someotheradmin@mycompany.com
 
 pagerduty:
-  service_key: pagerduty-service-key
+                 service_key: pagerduty-service-key
