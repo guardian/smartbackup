@@ -14,7 +14,7 @@ const FailureSubjectTemplate = `URGENT: {database:name} backup failed`
 const SuccessMessage = `The backup for database {database:name} on {database:host} completed at {time}`
 const SuccessSubjectTemplate = `{database:name} backed up`
 
-//Note: ordering is important!
+//Note: ordering is important! Substitution relies on the same ordering as the substitution values below
 var DatabaseSubstitutionTags = []string{"{database:name}", "{database:host}", "{database:port}", "{database:dbname}"}
 var GeneralSubstitutionTags = []string{"{time}", "{errorString}"}
 

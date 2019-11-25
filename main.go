@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/fredex42/smartbackup/mail"
 	"github.com/fredex42/smartbackup/netapp"
 	"github.com/fredex42/smartbackup/postgres"
@@ -65,10 +66,26 @@ func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.Netap
 	return nil
 }
 
+func GenerateAndSend(messenger *Messenger, config *ConfigData, target *ResolvedBackupTarget, subjectTemplate string, bodytextTemplate string, error string) error {
+	subject, body, msgErr := messenger.GenerateMessage(target, subjectTemplate, bodytextTemplate, error)
+	if msgErr != nil {
+		log.Printf("ERROR: Could not generate error message: %s", msgErr)
+		//Hmm, should this be fatal??
+		return msgErr
+	}
+	sendErr := mail.SendMail(&config.SMTP, subject, body)
+	if sendErr != nil {
+		log.Printf("ERROR: Could not send error email: %s", sendErr)
+		return sendErr
+	}
+	return nil
+}
+
 func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	configFilePtr := flag.String("config", "smartbackup.yaml", "YAML config file")
 	allowInvalid := flag.Bool("continue", true, "Don't terminate if any config is invalid but continue to work with the ones that are")
+	testSmtp := flag.Bool("test-smtp", false, "Send a test message as if a backup had failed")
 	flag.Parse()
 
 	config, configErr := GetConfig(*configFilePtr)
@@ -97,6 +114,20 @@ func main() {
 		log.Fatalf("Could not initialise messaging: %s", msgErr)
 	}
 
+	if *testSmtp {
+		log.Printf("Sending test message to %s", spew.Sdump(config.SMTP.SendTo))
+		fakeBackupTarget := &ResolvedBackupTarget{
+			Netapp:   &netapp.NetappConfig{},
+			Database: &postgres.DatabaseConfig{},
+			VolumeId: "",
+		}
+		sendErr := GenerateAndSend(messenger, config, fakeBackupTarget, "Test message from smartbackup at {time}", "This is a test message from smartbackup, if you can read it then SMTP is working correctly", "")
+		if sendErr != nil {
+			log.Fatal("Could not send test message: ", sendErr)
+		}
+		log.Fatal("Successfully sent message")
+	}
+
 	for _, target := range resolvedTargets {
 		dateString := time.Now().Format(time.RFC3339)
 		backupName := fmt.Sprintf("%s_%s", target.Database.Name, dateString)
@@ -104,14 +135,9 @@ func main() {
 		checkpoint, err := postgres.StartBackup(target.Database, backupName)
 		if err != nil {
 			log.Printf("ERROR: Database %s did not quiesce! %s", target.Database.Name, err)
-			subject, body, msgErr := messenger.GenerateMessage(target, FailureSubjectTemplate, FailureMessage, err.Error())
-			if msgErr != nil {
-				log.Printf("ERROR: Could not generate error message: %s", msgErr)
-				//Hmm, should this be fatal??
-			}
-			sendErr := mail.SendMail(&config.SMTP, subject, body)
+			sendErr := GenerateAndSend(messenger, config, target, FailureSubjectTemplate, FailureMessage, err.Error())
 			if sendErr != nil {
-				log.Printf("ERROR: Could not send error email: %s", sendErr)
+				log.Printf("ERROR: Could not send error message: %s", sendErr)
 			}
 			break
 		}
@@ -122,14 +148,29 @@ func main() {
 
 		if snapshotErr != nil {
 			log.Printf("ERROR: Could not perform snapshot! %s", snapshotErr)
+			sendErr := GenerateAndSend(messenger, config, target, FailureSubjectTemplate, FailureMessage, snapshotErr.Error())
+			if sendErr != nil {
+				log.Printf("ERROR: Could not send error message: %s", sendErr)
+			}
 		}
 
 		endpoint, err := postgres.StopBackup(target.Database)
 		if err != nil {
 			log.Printf("ERROR: Database %s did not unquiesce! %s", target.Database.Name, err)
+			sendErr := GenerateAndSend(messenger, config, target, FailureSubjectTemplate, FailureMessage, err.Error())
+			if sendErr != nil {
+				log.Printf("ERROR: Could not send error message: %s", sendErr)
+			}
 			break
 		}
-		log.Printf("Databse unquiesced, completed state ID is %s", endpoint)
+
+		log.Printf("Database unquiesced, completed state ID is %s", endpoint)
+		if config.SMTP.AlwaysSend {
+			sendErr := GenerateAndSend(messenger, config, target, SuccessSubjectTemplate, SuccessMessage, "")
+			if sendErr != nil {
+				log.Printf("ERROR: Could not send success message: %s", sendErr)
+			}
+		}
 	}
 
 }

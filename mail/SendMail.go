@@ -67,6 +67,7 @@ func SendMail(mailConfig *MailConfig, subject string, body io.Reader) error {
 		rcptErr := smtpClient.Rcpt(sendTo)
 		if rcptErr != nil {
 			log.Printf("WARNING - could not add recipient %s: %s", sendTo, rcptErr)
+			return rcptErr
 		}
 	}
 
