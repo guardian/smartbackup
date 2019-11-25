@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/fredex42/smartbackup/netapp"
 	"github.com/fredex42/smartbackup/postgres"
-	"io/ioutil"
 	"testing"
 )
 
@@ -22,14 +21,12 @@ func TestMessenger_GenerateMessageNosubs(t *testing.T) {
 		t.Fatalf("Could not set up Messenger: %s", err)
 	}
 
-	subject, bodyReader, generateErr := m.GenerateMessage(fakeTarget, "This is a subject", "This is a bodytext template", "This is an error string")
+	subject, bodyContent, generateErr := m.GenerateMessage(fakeTarget, "This is a subject", "This is a bodytext template", "This is an error string")
 
 	if subject != "This is a subject" {
 		t.Errorf("Got unexpected subject string '%s'", subject)
 	}
 
-	bodyContentBytes, _ := ioutil.ReadAll(bodyReader)
-	bodyContent := string(bodyContentBytes)
 	if bodyContent != "This is a bodytext template" {
 		t.Errorf("Got unexpected bodytext '%s'", bodyContent)
 	}
@@ -57,14 +54,12 @@ func TestMessenger_GenerateMessageWithsubs(t *testing.T) {
 		t.Fatalf("Could not set up Messenger: %s", err)
 	}
 
-	subject, bodyReader, generateErr := m.GenerateMessage(fakeTarget, "This is backup {for} {database:name}", "This is a bodytext for {database:name} on {database:host} with error {errorString}", "This is an error string")
+	subject, bodyContent, generateErr := m.GenerateMessage(fakeTarget, "This is backup {for} {database:name}", "This is a bodytext for {database:name} on {database:host} with error {errorString}", "This is an error string")
 
 	if subject != "This is backup {for} MyDatabase" {
 		t.Errorf("Got unexpected subject string '%s'", subject)
 	}
 
-	bodyContentBytes, _ := ioutil.ReadAll(bodyReader)
-	bodyContent := string(bodyContentBytes)
 	if bodyContent != "This is a bodytext for MyDatabase on db.company.int with error This is an error string" {
 		t.Errorf("Got unexpected bodytext '%s'", bodyContent)
 	}
