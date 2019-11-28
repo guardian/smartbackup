@@ -71,7 +71,11 @@ extra user accounts.  On the other hand, a secure little place or a Kubernetes c
 
 It's assumed that the app will be run from a task scheduler like cron
 
-## How do I build it?
+## Do I need to build it from source?
+
+Nope! You can download the latest Master build from here: https://s3.eu-west-1.amazonaws.com/gnm-multimedia-deployables/smartbackup/latest/smartbackup.zip
+
+## How do I build it, if I want to?
 
 You'll need Go 1.11 or higher installed to build - https://golang.org/dl/
 
@@ -81,6 +85,6 @@ For (really easy!) information about cross-compiling see https://golangcookbook.
 
 ### TL;DR
 
-GOOS=linux GOARCH=arm go build
+GOOS={youros} GOARCH={yourarch} go build
 
 See https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63 for supported values
