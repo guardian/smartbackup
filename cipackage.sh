@@ -1,6 +1,7 @@
 #!/bin/bash -e
 
 cd outputs
+cp ../example-config.yaml .
 zip ../smartbackup-${BUILD_NUM}.zip *
 cd ..
 

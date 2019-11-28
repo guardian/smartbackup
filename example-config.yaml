@@ -21,3 +21,14 @@ targets:
   - database: databse1                              #The database to back up.  This field must correspond to the Name: field of one entry in Databases
     netapp: simulator-nfs                           #The Netapp SVM containing the volume that needs backing up. This field must correspond to the Name: field of one entry in Databases
     volumeid: 26894980-70ca-47d3-a67f-fdc6a994e7c5  #UUID of the volume that needs to be snapshotted
+
+smtp:
+  smtpserver: mx.mycompany.com:25
+  mailfrom: SmartBackup <smartbackup@gnm.int>
+  sendonsuccess: true
+  mailto:
+    - someadmin@mycompany.com
+    - someotheradmin@mycompany.com
+
+pagerduty:
+                 service_key: pagerduty-service-key

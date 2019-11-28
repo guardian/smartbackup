@@ -8,12 +8,14 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/fredex42/smartbackup/mail"
 	"github.com/fredex42/smartbackup/netapp"
+	"github.com/fredex42/smartbackup/pagerduty"
 	"github.com/fredex42/smartbackup/postgres"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -69,18 +71,53 @@ func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.Netap
 /**
 generate a message for the given ResolvedBackupTarget based on templates for subject and bodytext, and send it
 Returns an error if the operation fails or nil if it succeeds
- */
+*/
 func GenerateAndSend(messenger *Messenger, config *ConfigData, target *ResolvedBackupTarget, subjectTemplate string, bodytextTemplate string, error string) error {
-	subject, body, msgErr := messenger.GenerateMessage(target, subjectTemplate, bodytextTemplate, error)
+	didFail := false
+
+	subject, bodyString, msgErr := messenger.GenerateMessage(target, subjectTemplate, bodytextTemplate, error)
 	if msgErr != nil {
 		log.Printf("ERROR: Could not generate error message: %s", msgErr)
 		//Hmm, should this be fatal??
 		return msgErr
 	}
-	sendErr := mail.SendMail(&config.SMTP, subject, body)
-	if sendErr != nil {
-		log.Printf("ERROR: Could not send error email: %s", sendErr)
-		return sendErr
+
+	if config.SMTP.SMTPServer != "" {
+		sendErr := mail.SendMail(&config.SMTP, subject, strings.NewReader(bodyString))
+		if sendErr != nil {
+			log.Printf("ERROR: Could not send error email: %s", sendErr)
+			//continue here so PD can still be sent
+			didFail = true
+		}
+	} else {
+		log.Printf("SMTP is not configured so not sending email")
+	}
+
+	if error != "" {
+		if config.PagerDuty.ServiceKey != "" {
+			incidentKey := fmt.Sprintf("smartbackup-%s-%s", target.Database.Name, target.Netapp.Name)
+			details := map[string]string{
+				"volumeid": target.VolumeId,
+				"dbname":   target.Database.DBName,
+				"dbhost":   target.Database.Host,
+				"svm":      target.Netapp.SVM,
+			}
+			pdIncident := pagerduty.NewIncident(&config.PagerDuty, incidentKey, details, bodyString)
+			sendErr := pagerduty.SendAlert(pdIncident)
+			if sendErr != nil {
+				log.Printf("ERROR: Could not send pagerduty alert: %s", sendErr)
+				didFail = true
+			}
+		} else {
+			log.Printf("Pagerduty is not configured so not sending alert")
+		}
+	}
+
+	if config.SMTP.SMTPServer == "" && config.PagerDuty.ServiceKey == "" {
+		return errors.New("No message output is set up, so no message has been sent")
+	}
+	if didFail {
+		return errors.New("Could not send one or more messages, consult logs for details")
 	}
 	return nil
 }
@@ -89,7 +126,7 @@ func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	configFilePtr := flag.String("config", "smartbackup.yaml", "YAML config file")
 	allowInvalid := flag.Bool("continue", true, "Don't terminate if any config is invalid but continue to work with the ones that are")
-	testSmtp := flag.Bool("test-smtp", false, "Send a test message as if a backup had failed")
+	testSmtp := flag.Bool("test-message", false, "Send a test message as if a backup had failed")
 	flag.Parse()
 
 	config, configErr := GetConfig(*configFilePtr)
@@ -125,7 +162,7 @@ func main() {
 			Database: &postgres.DatabaseConfig{},
 			VolumeId: "",
 		}
-		sendErr := GenerateAndSend(messenger, config, fakeBackupTarget, "Test message from smartbackup at {time}", "This is a test message from smartbackup, if you can read it then SMTP is working correctly", "")
+		sendErr := GenerateAndSend(messenger, config, fakeBackupTarget, "Test message from smartbackup at {time}", "This is a test message from smartbackup, if you can read it then SMTP is working correctly", "some fake error")
 		if sendErr != nil {
 			log.Fatal("Could not send test message: ", sendErr)
 		}
