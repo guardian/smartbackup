@@ -124,7 +124,7 @@ func GenerateAndSend(messenger *Messenger, config *ConfigData, target *ResolvedB
 
 func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	configFilePtr := flag.String("config", "smartbackup.yaml", "YAML config file")
+	configFilePtr := flag.String("config", "/etc/smartbackup.yaml", "YAML config file")
 	allowInvalid := flag.Bool("continue", true, "Don't terminate if any config is invalid but continue to work with the ones that are")
 	testSmtp := flag.Bool("test-message", false, "Send a test message as if a backup had failed")
 	flag.Parse()
