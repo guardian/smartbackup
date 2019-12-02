@@ -5,6 +5,8 @@ import (
 	"github.com/fredex42/smartbackup/netapp"
 	"github.com/fredex42/smartbackup/pagerduty"
 	"github.com/fredex42/smartbackup/postgres"
+	"log"
+	"time"
 )
 
 type ConfigData struct {
@@ -44,10 +46,15 @@ func (c *ConfigData) ResolveBackupTargets() ([]*ResolvedBackupTarget, []*BackupT
 			failedTargets = append(failedTargets, &c.Targets[i])
 		} else {
 			//log.Printf("%s found", entry)
+			keepDuration, keepParseErr := time.ParseDuration(entry.KeepFor)
+			if keepParseErr != nil {
+				log.Fatal("Config error in backup target for '", entry.DatabaseName, "': Could not parse duration from '", entry.KeepFor, "'.")
+			}
 			resolvedTargets = append(resolvedTargets, &ResolvedBackupTarget{
 				Database: &db,
 				Netapp:   &np,
 				VolumeId: entry.VolumeId,
+				KeepFor:  keepDuration,
 			})
 		}
 	}

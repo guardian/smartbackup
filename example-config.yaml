@@ -21,14 +21,15 @@ targets:
   - database: databse1                              #The database to back up.  This field must correspond to the Name: field of one entry in Databases
     netapp: simulator-nfs                           #The Netapp SVM containing the volume that needs backing up. This field must correspond to the Name: field of one entry in Databases
     volumeid: 26894980-70ca-47d3-a67f-fdc6a994e7c5  #UUID of the volume that needs to be snapshotted
+    keep_for: 24h                                   #How long to keep the snapshot for. Expected a string e.g., "24h"=>24 hours, "30s"=> 30 seconds(!), "1 week". For some reason "2 days" does not work, neither does "48 hours".
 
-smtp:
-  smtpserver: mx.mycompany.com:25
-  mailfrom: SmartBackup <smartbackup@gnm.int>
-  sendonsuccess: true
-  mailto:
+smtp:   #The SMTP section can be left out if you're not using it
+  smtpserver: mx.mycompany.com:25                   #the SMTP server to use
+  mailfrom: SmartBackup <smartbackup@gnm.int>       #what to use as the "from" address
+  sendonsuccess: true                               #if true, send message on successful backup. If false, don't
+  mailto:                                           #list of email addresses to send messages to. Must be formatted as a list even if there is only one.
     - someadmin@mycompany.com
     - someotheradmin@mycompany.com
 
 pagerduty:
-                 service_key: pagerduty-service-key
+  service_key: pagerduty-service-key

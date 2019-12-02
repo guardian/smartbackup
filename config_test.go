@@ -21,10 +21,10 @@ func TestResolveBackupTargets(t *testing.T) {
 			{Name: "database2", Host: "dbhost2", Port: 5432, DBName: "somedb", User: "user2", Password: "password2"},
 		},
 		Targets: []BackupTarget{
-			{DatabaseName: "database2", NetappName: "test3", VolumeId: "vol1"},
-			{DatabaseName: "database95", NetappName: "test1", VolumeId: "vol2"},
-			{DatabaseName: "database1", NetappName: "test1", VolumeId: "vol3"},
-			{DatabaseName: "database1", NetappName: "test99", VolumeId: "vol4"},
+			{DatabaseName: "database2", NetappName: "test3", VolumeId: "vol1", KeepFor: "1h"},
+			{DatabaseName: "database95", NetappName: "test1", VolumeId: "vol2", KeepFor: "30s"},
+			{DatabaseName: "database1", NetappName: "test1", VolumeId: "vol3", KeepFor: "48h"},
+			{DatabaseName: "database1", NetappName: "test99", VolumeId: "vol4", KeepFor: "1 week"},
 		},
 	}
 

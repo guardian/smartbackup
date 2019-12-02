@@ -38,8 +38,10 @@ func GetConfig(filePath string) (*ConfigData, error) {
 	return &config, nil
 }
 
-func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.NetappEntity, snapshotName string) error {
-	response, err := netapp.CreateSnapshot(config, targetVolume, snapshotName)
+func SyncPerformSnapshot(config *netapp.NetappConfig, targetVolume *netapp.NetappEntity, snapshotName string, keepFor time.Duration) error {
+	expiryTime := time.Now().Add(keepFor)
+
+	response, err := netapp.CreateSnapshot(config, targetVolume, snapshotName, expiryTime)
 	if err != nil {
 		log.Printf("Could not create snapshot: %s", err)
 		return err
@@ -185,7 +187,7 @@ func main() {
 		log.Printf("Database quiesced, consistent state ID is %s", checkpoint)
 
 		targetVolumeEntity := &netapp.NetappEntity{UUID: target.VolumeId}
-		snapshotErr := SyncPerformSnapshot(target.Netapp, targetVolumeEntity, backupName)
+		snapshotErr := SyncPerformSnapshot(target.Netapp, targetVolumeEntity, backupName, target.KeepFor)
 
 		if snapshotErr != nil {
 			log.Printf("ERROR: Could not perform snapshot! %s", snapshotErr)

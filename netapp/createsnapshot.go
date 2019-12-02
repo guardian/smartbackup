@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	url2 "net/url"
+	"time"
 )
 
 /**
@@ -17,7 +18,7 @@ Parameters: pointer to an http.Response object that contains the response
 Returns:
 - a pointer to a CreateSnapshotResponse object that contains the returned job data if it parses properly
 - an error if we can't obtain or parse the information properly
- */
+*/
 func GetJobResponseData(response *http.Response) (*CreateSnapshotResponse, error) {
 	var jobData CreateSnapshotResponse
 	responseBytes, readErr := ioutil.ReadAll(response.Body)
@@ -42,13 +43,18 @@ Parameters:
 Returns:
 - a pointer to a CreateSnapshotResponse object if the operation succeeds, nil if it fails
 - an error object if the operation fails, nil if it succeeds
- */
-func CreateSnapshot(config *NetappConfig, volume *NetappEntity, snapshotName string) (*CreateSnapshotResponse, error) {
+*/
+func CreateSnapshot(config *NetappConfig, volume *NetappEntity, snapshotName string, expiryTime time.Time) (*CreateSnapshotResponse, error) {
 	httpClient := &http.Client{}
 
 	log.Printf("Starting create snapshot operation on %s (%s)", volume.Name, volume.UUID)
 
-	requestContent := map[string]interface{}{"name": snapshotName}
+	expiryTimeString := expiryTime.Format(time.RFC3339)
+	requestContent := map[string]interface{}{
+		"name":        snapshotName,
+		"expiry_time": expiryTimeString,
+	}
+
 	requestString, marshalErr := json.Marshal(requestContent)
 	if marshalErr != nil {
 		log.Printf("Could not format request for server: %s", marshalErr)
