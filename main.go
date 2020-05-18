@@ -122,11 +122,24 @@ func GenerateAndSend(messenger *Messenger, config *ConfigData, target *ResolvedB
 	return nil
 }
 
+func runTestList(targets []*ResolvedBackupTarget) {
+	for _, target := range targets {
+		targetVolumeEntity := &netapp.NetappEntity{UUID: target.VolumeId}
+		result, err := netapp.ListSnapshots(target.Netapp, targetVolumeEntity)
+		if err != nil {
+			log.Printf("ERROR could not list target: %s", err)
+		} else {
+			log.Printf("INFO Found %d snapshots: ", result.RecordsCount)
+		}
+	}
+}
+
 func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	configFilePtr := flag.String("config", "/etc/smartbackup.yaml", "YAML config file")
 	allowInvalid := flag.Bool("continue", true, "Don't terminate if any config is invalid but continue to work with the ones that are")
 	testSmtp := flag.Bool("test-message", false, "Send a test message as if a backup had failed")
+	testList := flag.Bool("test-list", false, "Don't back up, list out found snapshots and exit")
 	flag.Parse()
 
 	config, configErr := GetConfig(*configFilePtr)
@@ -167,6 +180,11 @@ func main() {
 			log.Fatal("Could not send test message: ", sendErr)
 		}
 		log.Fatal("Successfully sent message")
+	}
+
+	if *testList {
+		runTestList(resolvedTargets)
+		log.Fatal("Completed test")
 	}
 
 	for _, target := range resolvedTargets {
