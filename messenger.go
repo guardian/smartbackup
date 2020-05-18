@@ -54,7 +54,6 @@ func compileRegexList(stringList *[]string) ([]*regexp.Regexp, error) {
 }
 
 func (m *Messenger) GenerateMessage(target *ResolvedBackupTarget, subjectTemplateString string, templateString string, errorString string) (string, string, error) {
-	//these must be in the same order as DatabseSubstitutionTags above!
 	hostname := target.Database.Host
 	if hostname == "localhost" { //not very useful for an email message!
 		h, getErr := os.Hostname()
@@ -65,7 +64,8 @@ func (m *Messenger) GenerateMessage(target *ResolvedBackupTarget, subjectTemplat
 		}
 	}
 
-	databaseSubValues := []string{target.Database.Name, target.Database.Host, string(target.Database.Port), target.Database.DBName}
+	//these must be in the same order as DatabseSubstitutionTags above!
+	databaseSubValues := []string{target.Database.Name, hostname, string(target.Database.Port), target.Database.DBName}
 	if len(databaseSubValues) < len(m.CompiledDatabaseSubstitutions) {
 		log.Printf("ERROR: Not enough substitution values. This probably indicates a code bug.")
 		return "", "", errors.New("not enough substitution values")
