@@ -143,6 +143,7 @@ func main() {
 	allowInvalid := flag.Bool("continue", true, "Don't terminate if any config is invalid but continue to work with the ones that are")
 	testSmtp := flag.Bool("test-message", false, "Send a test message as if a backup had failed")
 	testList := flag.Bool("test-list", false, "Don't back up, list out found snapshots and exit")
+	testDeleteSnap := flag.String("test-delete", "", "UUID of a snapshot to delete in order to test the delete-snapshot function. Use test-list to find a suitable uuid")
 	flag.Parse()
 
 	config, configErr := GetConfig(*configFilePtr)
@@ -188,6 +189,17 @@ func main() {
 	if *testList {
 		runTestList(resolvedTargets)
 		log.Fatal("Completed test")
+	}
+
+	if testDeleteSnap != nil && *testDeleteSnap != "" {
+		log.Printf("testing delete function on %s", *testDeleteSnap)
+		targetVolumeEntity := &netapp.NetappEntity{UUID: resolvedTargets[0].VolumeId}
+		err := netapp.DeleteSnapshot(&config.Netapp[0], targetVolumeEntity, *testDeleteSnap)
+		if err == nil {
+			log.Fatal("test completed successfully")
+		} else {
+			log.Fatalf("Could not delete %s: %s", *testDeleteSnap, err)
+		}
 	}
 
 	for _, target := range resolvedTargets {
