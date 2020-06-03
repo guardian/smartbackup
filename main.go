@@ -130,6 +130,9 @@ func runTestList(targets []*ResolvedBackupTarget) {
 			log.Printf("ERROR could not list target: %s", err)
 		} else {
 			log.Printf("INFO Found %d snapshots: ", result.RecordsCount)
+			for _, rec := range result.Records {
+				log.Printf("\t[%s] %s created at %s, expiry time %s", rec.SnapshotId, rec.Name, rec.CreateTime, rec.ExpiryTime)
+			}
 		}
 	}
 }

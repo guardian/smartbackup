@@ -36,14 +36,19 @@ type DeleteSnapshotResponse struct {
 	Job JobResponse `json:"job"`
 }
 
+type NetAppLink struct {
+	HRef string `json:"href"`
+}
+
 type SnapshotEntry struct {
-	Name               string    `json:"name"`
-	CreateTime         time.Time `json:"create_time"`
-	SnapshotId         string    `json:"uuid"`
-	ExpiryTime         time.Time `json:"expiry_time"`
-	State              string    `json:"state"`
-	SnaplockExpiryTime time.Time `json:"snaplock_expiry_time"`
-	Comment            string    `json:"comment"`
+	Name               string                `json:"name"`
+	CreateTime         time.Time             `json:"create_time"`
+	SnapshotId         string                `json:"uuid"`
+	ExpiryTime         time.Time             `json:"expiry_time"`
+	State              string                `json:"state"`
+	SnaplockExpiryTime time.Time             `json:"snaplock_expiry_time"`
+	Comment            string                `json:"comment"`
+	Links              map[string]NetAppLink `json:"_links"`
 }
 
 type ListSnapshotsResponse struct {
