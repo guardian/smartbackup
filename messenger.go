@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"os"
 	"regexp"
 	"time"
 )
@@ -53,8 +54,18 @@ func compileRegexList(stringList *[]string) ([]*regexp.Regexp, error) {
 }
 
 func (m *Messenger) GenerateMessage(target *ResolvedBackupTarget, subjectTemplateString string, templateString string, errorString string) (string, string, error) {
+	hostname := target.Database.Host
+	if hostname == "localhost" { //not very useful for an email message!
+		h, getErr := os.Hostname()
+		if getErr != nil {
+			log.Printf("Could not determine hostname: %s. Sticking with localhost", getErr)
+		} else {
+			hostname = h
+		}
+	}
+
 	//these must be in the same order as DatabseSubstitutionTags above!
-	databaseSubValues := []string{target.Database.Name, target.Database.Host, string(target.Database.Port), target.Database.DBName}
+	databaseSubValues := []string{target.Database.Name, hostname, string(target.Database.Port), target.Database.DBName}
 	if len(databaseSubValues) < len(m.CompiledDatabaseSubstitutions) {
 		log.Printf("ERROR: Not enough substitution values. This probably indicates a code bug.")
 		return "", "", errors.New("not enough substitution values")

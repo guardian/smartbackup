@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/fredex42/smartbackup/netapp"
 	"github.com/fredex42/smartbackup/postgres"
+	"log"
+	"os"
 	"testing"
 )
 
@@ -61,6 +64,41 @@ func TestMessenger_GenerateMessageWithsubs(t *testing.T) {
 	}
 
 	if bodyContent != "This is a bodytext for MyDatabase on db.company.int with error This is an error string" {
+		t.Errorf("Got unexpected bodytext '%s'", bodyContent)
+	}
+
+	if generateErr != nil {
+		t.Errorf("Generate returned an unexpected error: %s", generateErr)
+	}
+}
+
+/**
+Generated message should substitute os.Hostname() instead of localhost
+*/
+func TestMessenger_Localhost(t *testing.T) {
+	fakeTarget := &ResolvedBackupTarget{
+		Database: &postgres.DatabaseConfig{
+			Name: "MyDatabase",
+			Host: "localhost",
+		},
+		Netapp:   &netapp.NetappConfig{},
+		VolumeId: "",
+	}
+	m, err := NewMessenger()
+	if err != nil {
+		t.Fatalf("Could not set up Messenger: %s", err)
+	}
+
+	expectedHostName, _ := os.Hostname()
+	log.Printf("expecting hostname %s", expectedHostName)
+
+	subject, bodyContent, generateErr := m.GenerateMessage(fakeTarget, "This is backup {for} {database:name}", "This is a bodytext for {database:name} on {database:host} with error {errorString}", "This is an error string")
+
+	if subject != "This is backup {for} MyDatabase" {
+		t.Errorf("Got unexpected subject string '%s'", subject)
+	}
+
+	if bodyContent != fmt.Sprintf("This is a bodytext for MyDatabase on %s with error This is an error string", expectedHostName) {
 		t.Errorf("Got unexpected bodytext '%s'", bodyContent)
 	}
 

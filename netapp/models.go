@@ -1,5 +1,7 @@
 package netapp
 
+import "time"
+
 type NetappConfig struct {
 	Host   string `yaml:"host"`
 	User   string `yaml:"user"`
@@ -28,6 +30,25 @@ type JobResponse struct {
 
 type CreateSnapshotResponse struct {
 	Job JobResponse `json:"job"`
+}
+
+type DeleteSnapshotResponse struct {
+	Job JobResponse `json:"job"`
+}
+
+type SnapshotEntry struct {
+	Name               string    `json:"name"`
+	CreateTime         time.Time `json:"create_time"`
+	SnapshotId         string    `json:"uuid"`
+	ExpiryTime         time.Time `json:"expiry_time"`
+	State              string    `json:"state"`
+	SnaplockExpiryTime time.Time `json:"snaplock_expiry_time"`
+	Comment            string    `json:"comment"`
+}
+
+type ListSnapshotsResponse struct {
+	Records      []SnapshotEntry `json:"records"`
+	RecordsCount int32           `json:"num_records"`
 }
 
 type ErrorArguments struct {
