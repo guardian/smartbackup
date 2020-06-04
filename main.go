@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -137,6 +138,22 @@ func runTestList(targets []*ResolvedBackupTarget) {
 	}
 }
 
+func findSnapshotsToDelete(snapshotList *netapp.ListSnapshotsResponse, target *ResolvedBackupTarget) []netapp.SnapshotEntry {
+	recordsList := make([]netapp.SnapshotEntry, snapshotList.RecordsCount)
+	copy(recordsList, snapshotList.Records)
+	sort.SliceStable(recordsList, func(indexA int, indexB int) bool {
+		return recordsList[indexA].CreateTime.Before(recordsList[indexB].CreateTime)
+	})
+
+	//we want to keep the latest {target.SnapshotsToKeep}
+	snapshotsToKeep := len(recordsList) - target.SnapshotsToKeep
+	if snapshotsToKeep > 0 {
+		return recordsList[:snapshotsToKeep]
+	} else {
+		return make([]netapp.SnapshotEntry, 0)
+	}
+}
+
 func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	configFilePtr := flag.String("config", "/etc/smartbackup.yaml", "YAML config file")
@@ -144,6 +161,7 @@ func main() {
 	testSmtp := flag.Bool("test-message", false, "Send a test message as if a backup had failed")
 	testList := flag.Bool("test-list", false, "Don't back up, list out found snapshots and exit")
 	testDeleteSnap := flag.String("test-delete", "", "UUID of a snapshot to delete in order to test the delete-snapshot function. Use test-list to find a suitable uuid")
+	allowDelete := flag.Bool("allow-delete", false, "Set this if you want smartbackup to delete old snapshots. In order for this to work, max_snapshots must be set to non-zero in the targets: configuration")
 	flag.Parse()
 
 	config, configErr := GetConfig(*configFilePtr)
@@ -156,7 +174,7 @@ func main() {
 	if len(unresolvedTargets) > 0 {
 		log.Printf("WARNING: The following database definitions are not valid, please check that they refer to correct database and netapp entries")
 		for _, entry := range unresolvedTargets {
-			log.Printf("\t%s", entry)
+			log.Printf("\t%s", spew.Sdump(entry))
 		}
 		if *allowInvalid == false {
 			log.Fatalf("Exiting as --continue is set to false")
@@ -238,12 +256,44 @@ func main() {
 			break
 		}
 
-		log.Printf("Database unquiesced, completed state ID is %s", endpoint)
+		log.Printf("INFO: Database unquiesced, completed state ID is %s", endpoint)
 		if config.SMTP.AlwaysSend {
 			sendErr := GenerateAndSend(messenger, config, target, SuccessSubjectTemplate, SuccessMessage, "")
 			if sendErr != nil {
 				log.Printf("ERROR: Could not send success message: %s", sendErr)
 			}
+		}
+
+		log.Printf("Scanning existing snapshots...")
+		snapshotList, listErr := netapp.ListSnapshots(target.Netapp, targetVolumeEntity)
+		if listErr != nil {
+			log.Printf("ERROR: Could not list out snapshots for volume %s (%s): %s", targetVolumeEntity.Name, targetVolumeEntity.UUID, listErr)
+			continue
+		}
+
+		expiredSnapshots := findSnapshotsToDelete(snapshotList, target)
+		log.Printf("INFO: Volume has %d snapshots, we are configured to keep %d so %d should be expired", snapshotList.RecordsCount, target.SnapshotsToKeep, len(expiredSnapshots))
+		log.Printf("INFO: Expired snapshots list:")
+		for _, sn := range expiredSnapshots {
+			var expiryString string
+			if sn.ExpiryTime.IsZero() {
+				expiryString = "No expiry set"
+			} else {
+				expiryString = fmt.Sprint("Expires ", sn.ExpiryTime)
+			}
+
+			log.Printf("\t[%s] %s Created %s %s", sn.SnapshotId, sn.Name, sn.CreateTime, expiryString)
+		}
+
+		if *allowDelete {
+			for _, sn := range expiredSnapshots {
+				deleteErr := netapp.DeleteSnapshot(target.Netapp, targetVolumeEntity, sn.SnapshotId)
+				if deleteErr != nil {
+					log.Printf("ERROR: Could not delete [%s] %s: %s", sn.SnapshotId, sn.Name, deleteErr)
+				}
+			}
+		} else {
+			log.Print("INFO: No snapshots will be deleted this run. If you want to delete the above snapshots automatically then run with -allow-delete on the commandline")
 		}
 	}
 

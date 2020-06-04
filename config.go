@@ -43,11 +43,11 @@ func (c *ConfigData) ResolveBackupTargets() ([]*ResolvedBackupTarget, []*BackupT
 			//log.Printf("%s failed, incorrect db or netapp name", entry)
 			failedTargets = append(failedTargets, &c.Targets[i])
 		} else {
-			//log.Printf("%s found", entry)
 			resolvedTargets = append(resolvedTargets, &ResolvedBackupTarget{
-				Database: &db,
-				Netapp:   &np,
-				VolumeId: entry.VolumeId,
+				Database:        &db,
+				Netapp:          &np,
+				VolumeId:        entry.VolumeId,
+				SnapshotsToKeep: entry.SnapshotsToKeep,
 			})
 		}
 	}

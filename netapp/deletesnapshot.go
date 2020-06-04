@@ -8,6 +8,11 @@ import (
 	url2 "net/url"
 )
 
+/**
+asks the netapp API to delete the given snapshot from the given volume.
+this requires write access to volumes, e.g.
+	```security login rest-role create -vserver my-svm -role SmartBackupRest -api /api/storage/volumes -access all```
+*/
 func DeleteSnapshot(config *NetappConfig, volume *NetappEntity, snapshotId string) error {
 	httpClient := &http.Client{}
 

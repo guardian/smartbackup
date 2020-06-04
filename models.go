@@ -6,13 +6,15 @@ import (
 )
 
 type BackupTarget struct {
-	DatabaseName string `yaml:"database"`
-	NetappName   string `yaml:"netapp"`
-	VolumeId     string `yaml:"volumeid"`
+	DatabaseName    string `yaml:"database"`
+	NetappName      string `yaml:"netapp"`
+	VolumeId        string `yaml:"volumeid"`
+	SnapshotsToKeep int    `yaml:"max_snapshots"`
 }
 
 type ResolvedBackupTarget struct {
-	Database *postgres.DatabaseConfig
-	Netapp   *netapp.NetappConfig
-	VolumeId string
+	Database        *postgres.DatabaseConfig
+	Netapp          *netapp.NetappConfig
+	VolumeId        string
+	SnapshotsToKeep int
 }
